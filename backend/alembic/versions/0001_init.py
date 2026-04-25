@@ -1,7 +1,7 @@
 """init
 
 Revision ID: 0001_init
-Revises: 
+Revises:
 Create Date: 2026-04-25
 """
 
@@ -15,10 +15,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    role_enum = sa.Enum('admin', 'user', 'guest', name='role')
-    role_enum.create(op.get_bind(), checkfirst=True)
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
+                CREATE TYPE role AS ENUM ('admin', 'user', 'guest');
+            END IF;
+        END
+        $$;
+        """
+    )
+    role_enum = sa.Enum('admin', 'user', 'guest', name='role', create_type=False)
 
-    op.create_table('users',
+    op.create_table(
+        'users',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('username', sa.String(100), nullable=False),
         sa.Column('password_hash', sa.String(255), nullable=False),
@@ -28,7 +39,8 @@ def upgrade() -> None:
     )
     op.create_index('ix_users_username', 'users', ['username'], unique=True)
 
-    op.create_table('invites',
+    op.create_table(
+        'invites',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('code', sa.String(64), nullable=False),
         sa.Column('role', role_enum, nullable=False),
@@ -39,7 +51,8 @@ def upgrade() -> None:
     )
     op.create_index('ix_invites_code', 'invites', ['code'], unique=True)
 
-    op.create_table('tracks',
+    op.create_table(
+        'tracks',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('owner_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False),
         sa.Column('title', sa.String(255), nullable=False),
@@ -75,4 +88,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     for table in ['settings', 'sync_rooms', 'play_history', 'download_history', 'remote_tracks_cache', 'friend_storages', 'share_links', 'playlist_tracks', 'playlists', 'tracks', 'invites', 'users']:
         op.drop_table(table)
-    sa.Enum(name='role').drop(op.get_bind(), checkfirst=True)
+    op.execute('DROP TYPE IF EXISTS role')

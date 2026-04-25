@@ -29,3 +29,4 @@ docker compose up --build
 - Ошибка `ModuleNotFoundError: No module named 'app'` исправлена в обновлённой версии проекта; пересоберите backend: `docker compose up --build backend`.
 
 - Если backend падает с `connection to server at "postgres" ... Connection refused`, это гонка старта PostgreSQL. В новой версии добавлены healthcheck и ожидание БД, просто пересоберите: `docker compose up --build`.
+- Если в логах `type "role" already exists`, очистите volume БД и пересоберите: `docker compose down -v && docker compose up --build`.
