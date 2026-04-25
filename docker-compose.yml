@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: musiccontrol
+      POSTGRES_USER: musiccontrol
+      POSTGRES_PASSWORD: musiccontrol
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://musiccontrol:musiccontrol@postgres:5432/musiccontrol
+      SECRET_KEY: dev_secret_key
+      MUSIC_DIR: /storage/music
+      COVERS_DIR: /storage/covers
+      DOWNLOADS_DIR: /storage/downloads
+      NODE_NAME: MusicControl Local Node
+    volumes:
+      - ./data/music:/storage/music
+      - ./data/covers:/storage/covers
+      - ./data/downloads:/storage/downloads
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_BASE: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
