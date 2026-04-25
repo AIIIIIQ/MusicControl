@@ -27,3 +27,5 @@ docker compose up --build
 ### Troubleshooting
 - Если кнопка «Отправить» не работает, проверьте `docker compose logs backend` — backend должен быть в состоянии `running`.
 - Ошибка `ModuleNotFoundError: No module named 'app'` исправлена в обновлённой версии проекта; пересоберите backend: `docker compose up --build backend`.
+
+- Если backend падает с `connection to server at "postgres" ... Connection refused`, это гонка старта PostgreSQL. В новой версии добавлены healthcheck и ожидание БД, просто пересоберите: `docker compose up --build`.
