@@ -30,3 +30,4 @@ docker compose up --build
 
 - Если backend падает с `connection to server at "postgres" ... Connection refused`, это гонка старта PostgreSQL. В новой версии добавлены healthcheck и ожидание БД, просто пересоберите: `docker compose up --build`.
 - Если в логах `type "role" already exists`, очистите volume БД и пересоберите: `docker compose down -v && docker compose up --build`.
+- Если `backend` не запущен, проверяйте версию файла локально: `grep -n "sa.String(10)" backend/alembic/versions/0001_init.py`. Для перезапуска: `docker compose down -v --rmi local && docker compose build --no-cache && docker compose up`.

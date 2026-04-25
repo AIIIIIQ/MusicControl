@@ -7,7 +7,6 @@ Create Date: 2026-04-25
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 revision = '0001_init'
 down_revision = None
@@ -16,25 +15,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        """
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
-                CREATE TYPE role AS ENUM ('admin', 'user', 'guest');
-            END IF;
-        END
-        $$;
-        """
-    )
-    role_enum = postgresql.ENUM('admin', 'user', 'guest', name='role', create_type=False)
 
     op.create_table(
         'users',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('username', sa.String(100), nullable=False),
         sa.Column('password_hash', sa.String(255), nullable=False),
-        sa.Column('role', role_enum, nullable=False),
+        sa.Column('role', sa.String(10), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('is_active', sa.Boolean(), nullable=False),
     )
@@ -44,7 +31,7 @@ def upgrade() -> None:
         'invites',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('code', sa.String(64), nullable=False),
-        sa.Column('role', role_enum, nullable=False),
+        sa.Column('role', sa.String(10), nullable=False),
         sa.Column('expires_at', sa.DateTime(), nullable=True),
         sa.Column('used_at', sa.DateTime(), nullable=True),
         sa.Column('created_by_user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False),
@@ -89,4 +76,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     for table in ['settings', 'sync_rooms', 'play_history', 'download_history', 'remote_tracks_cache', 'friend_storages', 'share_links', 'playlist_tracks', 'playlists', 'tracks', 'invites', 'users']:
         op.drop_table(table)
-    op.execute('DROP TYPE IF EXISTS role')
+    pass

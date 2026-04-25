@@ -27,7 +27,7 @@ def setup(payload: SetupRequest, db: Session = Depends(get_db)):
     db.flush()
     db.add(Setting(user_id=user.id, theme='dark'))
     db.commit()
-    token = create_access_token(user.username, user.role.value)
+    token = create_access_token(user.username, str(user.role))
     return TokenResponse(access_token=token)
 
 
@@ -49,7 +49,7 @@ def register_by_invite(payload: RegisterByInviteRequest, db: Session = Depends(g
     db.flush()
     db.add(Setting(user_id=user.id, theme='dark'))
     db.commit()
-    return TokenResponse(access_token=create_access_token(user.username, user.role.value))
+    return TokenResponse(access_token=create_access_token(user.username, str(user.role)))
 
 
 @router.post('/login', response_model=TokenResponse)
@@ -57,7 +57,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail='Invalid credentials')
-    return TokenResponse(access_token=create_access_token(user.username, user.role.value))
+    return TokenResponse(access_token=create_access_token(user.username, str(user.role)))
 
 
 @router.get('/me', response_model=UserOut)
