@@ -7,6 +7,7 @@ Create Date: 2026-04-25
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision = '0001_init'
 down_revision = None
@@ -26,7 +27,7 @@ def upgrade() -> None:
         $$;
         """
     )
-    role_enum = sa.Enum('admin', 'user', 'guest', name='role', create_type=False)
+    role_enum = postgresql.ENUM('admin', 'user', 'guest', name='role', create_type=False)
 
     op.create_table(
         'users',
