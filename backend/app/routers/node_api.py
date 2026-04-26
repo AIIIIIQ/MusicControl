@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -7,6 +7,14 @@ from app.models import Track
 from app.services.streaming import range_response
 
 router = APIRouter(prefix='/api/node', tags=['node'])
+
+
+def require_node_token(authorization: str | None = Header(default=None)):
+    if not settings.node_require_token:
+        return
+    expected = f'Bearer {settings.node_access_token}'
+    if authorization != expected:
+        raise HTTPException(status_code=401, detail='Invalid node access token')
 
 
 @router.get('/info')
@@ -24,7 +32,7 @@ def speedtest():
     return 'x' * 1_000_000
 
 
-@router.get('/catalog')
+@router.get('/catalog', dependencies=[Depends(require_node_token)])
 def catalog(db: Session = Depends(get_db)):
     tracks = db.query(Track).all()
     return [
@@ -43,7 +51,7 @@ def catalog(db: Session = Depends(get_db)):
     ]
 
 
-@router.get('/tracks/{track_id}')
+@router.get('/tracks/{track_id}', dependencies=[Depends(require_node_token)])
 def track_meta(track_id: int, db: Session = Depends(get_db)):
     t = db.query(Track).filter(Track.id == track_id).first()
     if not t:
@@ -51,7 +59,7 @@ def track_meta(track_id: int, db: Session = Depends(get_db)):
     return t
 
 
-@router.get('/tracks/{track_id}/stream')
+@router.get('/tracks/{track_id}/stream', dependencies=[Depends(require_node_token)])
 def node_stream(track_id: int, request: Request, db: Session = Depends(get_db)):
     t = db.query(Track).filter(Track.id == track_id).first()
     if not t:
@@ -59,7 +67,7 @@ def node_stream(track_id: int, request: Request, db: Session = Depends(get_db)):
     return range_response(t.file_path, request)
 
 
-@router.get('/tracks/{track_id}/download')
+@router.get('/tracks/{track_id}/download', dependencies=[Depends(require_node_token)])
 def node_download(track_id: int, request: Request, db: Session = Depends(get_db)):
     t = db.query(Track).filter(Track.id == track_id).first()
     if not t:

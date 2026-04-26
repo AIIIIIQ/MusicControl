@@ -11,7 +11,7 @@ from app.config import settings
 from app.database import get_db
 from app.models import DownloadHistory, FriendStorage, RemoteTrackCache, User
 from app.schemas.common import FriendStorageCreate, FriendStorageUpdate
-from app.utils.deps import get_current_user
+from app.utils.deps import get_local_owner
 
 router = APIRouter(prefix='/api/friend-storages', tags=['friend-storages'])
 
@@ -28,12 +28,19 @@ def _headers(storage: FriendStorage):
 
 
 @router.get('')
-def list_items(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(FriendStorage).filter(FriendStorage.owner_id == user.id).all()
+def list_items(user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
+    items = db.query(FriendStorage).filter(FriendStorage.owner_id == user.id).all()
+    return [
+        {
+            **{c.name: getattr(item, c.name) for c in item.__table__.columns},
+            'cached_tracks_count': db.query(RemoteTrackCache).filter(RemoteTrackCache.friend_storage_id == item.id).count(),
+        }
+        for item in items
+    ]
 
 
 @router.post('')
-def create_item(payload: FriendStorageCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_item(payload: FriendStorageCreate, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     item = FriendStorage(owner_id=user.id, **payload.model_dump())
     db.add(item)
     db.commit()
@@ -42,7 +49,7 @@ def create_item(payload: FriendStorageCreate, user: User = Depends(get_current_u
 
 
 @router.put('/{storage_id}')
-def update_item(storage_id: int, payload: FriendStorageUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_item(storage_id: int, payload: FriendStorageUpdate, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     item = _item_or_404(storage_id, user.id, db)
     for k, v in payload.model_dump().items():
         setattr(item, k, v)
@@ -51,7 +58,7 @@ def update_item(storage_id: int, payload: FriendStorageUpdate, user: User = Depe
 
 
 @router.delete('/{storage_id}')
-def delete_item(storage_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_item(storage_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     item = _item_or_404(storage_id, user.id, db)
     db.delete(item)
     db.commit()
@@ -59,7 +66,7 @@ def delete_item(storage_id: int, user: User = Depends(get_current_user), db: Ses
 
 
 @router.post('/{storage_id}/check')
-def check(storage_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def check(storage_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     item = _item_or_404(storage_id, user.id, db)
     started = time.perf_counter()
     try:
@@ -82,7 +89,7 @@ def check(storage_id: int, user: User = Depends(get_current_user), db: Session =
 
 
 @router.post('/{storage_id}/sync-catalog')
-def sync_catalog(storage_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def sync_catalog(storage_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     item = _item_or_404(storage_id, user.id, db)
     with httpx.Client(timeout=15) as client:
         r = client.get(f'{item.base_url}/api/node/catalog', headers=_headers(item))
@@ -97,13 +104,13 @@ def sync_catalog(storage_id: int, user: User = Depends(get_current_user), db: Se
 
 
 @router.get('/{storage_id}/tracks')
-def list_remote_tracks(storage_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_remote_tracks(storage_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     _item_or_404(storage_id, user.id, db)
     return db.query(RemoteTrackCache).filter(RemoteTrackCache.friend_storage_id == storage_id).all()
 
 
 @router.get('/{storage_id}/tracks/{remote_track_id}/stream')
-def stream_remote(storage_id: int, remote_track_id: int, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def stream_remote(storage_id: int, remote_track_id: int, request: Request, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     item = _item_or_404(storage_id, user.id, db)
     url = f'{item.base_url}/api/node/tracks/{remote_track_id}/stream'
     headers = _headers(item)
@@ -122,7 +129,7 @@ def stream_remote(storage_id: int, remote_track_id: int, request: Request, user:
 
 
 @router.post('/{storage_id}/tracks/{remote_track_id}/download')
-def download_remote(storage_id: int, remote_track_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def download_remote(storage_id: int, remote_track_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     item = _item_or_404(storage_id, user.id, db)
     with httpx.Client(timeout=30) as client:
         resp = client.get(f'{item.base_url}/api/node/tracks/{remote_track_id}/download', headers=_headers(item))

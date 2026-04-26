@@ -4,13 +4,14 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
 from app.models import Track, User
 from app.services.streaming import range_response
-from app.utils.deps import get_current_user
+from app.utils.deps import get_local_owner
 
 router = APIRouter(prefix='/api/tracks', tags=['tracks'])
 ALLOWED_EXT = {'mp3', 'flac', 'wav', 'ogg', 'm4a'}
@@ -24,7 +25,7 @@ def _track_or_404(track_id: int, user_id: int, db: Session) -> Track:
 
 
 @router.get('')
-def list_tracks(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_tracks(user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     return db.query(Track).filter(Track.owner_id == user.id).order_by(Track.created_at.desc()).all()
 
 
@@ -36,7 +37,7 @@ async def upload_track(
     album: str = Form(''),
     duration_seconds: int = Form(0),
     source_type: str = Form('upload'),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_local_owner),
     db: Session = Depends(get_db),
 ):
     ext = file.filename.split('.')[-1].lower() if '.' in file.filename else ''
@@ -72,12 +73,12 @@ async def upload_track(
 
 
 @router.get('/{track_id}')
-def get_track(track_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_track(track_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     return _track_or_404(track_id, user.id, db)
 
 
 @router.put('/{track_id}')
-def update_track(track_id: int, payload: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_track(track_id: int, payload: dict, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     track = _track_or_404(track_id, user.id, db)
     for field in ['title', 'artist', 'album', 'genre', 'duration_seconds']:
         if field in payload:
@@ -89,7 +90,7 @@ def update_track(track_id: int, payload: dict, user: User = Depends(get_current_
 
 
 @router.delete('/{track_id}')
-def delete_track(track_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_track(track_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     track = _track_or_404(track_id, user.id, db)
     if os.path.exists(track.file_path):
         os.remove(track.file_path)
@@ -101,7 +102,7 @@ def delete_track(track_id: int, user: User = Depends(get_current_user), db: Sess
 
 
 @router.post('/{track_id}/cover')
-async def upload_cover(track_id: int, file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def upload_cover(track_id: int, file: UploadFile = File(...), user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     track = _track_or_404(track_id, user.id, db)
     os.makedirs(settings.covers_dir, exist_ok=True)
     ext = file.filename.split('.')[-1].lower() if '.' in file.filename else 'jpg'
@@ -114,13 +115,21 @@ async def upload_cover(track_id: int, file: UploadFile = File(...), user: User =
     return {'message': 'cover uploaded'}
 
 
+@router.get('/{track_id}/cover')
+def get_cover(track_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
+    track = _track_or_404(track_id, user.id, db)
+    if not track.cover_path or not os.path.exists(track.cover_path):
+        raise HTTPException(status_code=404, detail='Cover not found')
+    return FileResponse(track.cover_path)
+
+
 @router.get('/{track_id}/stream')
-def stream(track_id: int, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def stream(track_id: int, request: Request, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     track = _track_or_404(track_id, user.id, db)
     return range_response(track.file_path, request)
 
 
 @router.get('/{track_id}/download')
-def download(track_id: int, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def download(track_id: int, request: Request, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     track = _track_or_404(track_id, user.id, db)
     return range_response(track.file_path, request, download=True, filename=track.original_filename)

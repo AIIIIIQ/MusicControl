@@ -1,8 +1,14 @@
-# MusicControl MVP
+# MusicControl (single-owner mode)
 
-Распределённая сеть личных музыкальных хранилищ (локально разворачиваемый MVP).
+MusicControl — локально разворачиваемый сайт для личного музыкального хранилища.
 
-## Запуск
+## Ключевая концепция
+- Одна установка = один владелец хранилища.
+- Локальный UI работает **без логина**.
+- Backend автоматически создаёт технического владельца `local_owner`.
+- Все сущности (tracks, playlists, share links, friend storages, settings) принадлежат `local_owner`.
+
+## Быстрый старт
 ```bash
 docker compose up --build
 ```
@@ -11,14 +17,12 @@ docker compose up --build
 - Backend API: http://localhost:8000
 - Swagger: http://localhost:8000/docs
 
-## Быстрый сценарий
-1. Откройте `http://localhost:5173`.
-2. Нажмите **Первый запуск**, создайте администратора.
-3. Загрузите трек на странице **Треки**.
-4. Создайте share-link на странице **Ссылки**.
-5. Добавьте friend storage на странице **Источники**.
+При старте backend автоматически:
+1. применяет миграции Alembic,
+2. создаёт папки хранения,
+3. создаёт `local_owner` и его settings (если отсутствуют).
 
-## Seed/demo
-- После входа админом можно вызвать `POST /api/dev/seed` в Swagger.
-- Добавятся демо-пользователи и демонстрационный source.
-- Для своих аудиофайлов положите треки в `./data/music` или загрузите через UI.
+## Node API защита
+- `NODE_REQUIRE_TOKEN=false` — demo режим, node endpoints доступны без токена.
+- `NODE_REQUIRE_TOKEN=true` — `/api/node/catalog` и `/api/node/tracks/*` требуют `Authorization: Bearer <NODE_ACCESS_TOKEN>`.
+- `/api/node/ping` и `/api/node/info` всегда открыты.
