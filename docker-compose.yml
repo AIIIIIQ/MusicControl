@@ -19,6 +19,8 @@ services:
       COVERS_DIR: /storage/covers
       DOWNLOADS_DIR: /storage/downloads
       NODE_NAME: MusicControl Local Node
+      NODE_ACCESS_TOKEN: dev_node_token
+      NODE_REQUIRE_TOKEN: "false"
     volumes:
       - ./data/music:/storage/music
       - ./data/covers:/storage/covers

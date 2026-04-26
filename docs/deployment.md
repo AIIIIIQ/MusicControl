@@ -1,23 +1,16 @@
 # Deployment
 
-## Команда
-`docker compose up --build`
+## Запуск
+```bash
+docker compose up --build
+```
 
-## Переменные окружения
-- SECRET_KEY
-- DATABASE_URL
-- MUSIC_DIR
-- COVERS_DIR
-- DOWNLOADS_DIR
-- NODE_NAME/NODE_DESCRIPTION
+## Что делает backend entrypoint
+1. `alembic upgrade head`
+2. `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 
-## Порты
-- 5173 frontend
-- 8000 backend
-- 5432 postgres
-
-## Volumes
-- `pgdata` для БД
-- `./data/music`
-- `./data/covers`
-- `./data/downloads`
+## Переменные
+- `DATABASE_URL`
+- `MUSIC_DIR`, `COVERS_DIR`, `DOWNLOADS_DIR`
+- `NODE_NAME`, `NODE_DESCRIPTION`
+- `NODE_ACCESS_TOKEN`, `NODE_REQUIRE_TOKEN`

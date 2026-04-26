@@ -1,20 +1,13 @@
-# Тестирование
+# Testing checklist
 
-## Тест-кейсы (10+)
-1. Первый setup создаёт admin.
-2. Повторный setup отклоняется.
-3. Login выдаёт JWT.
-4. Invite создаётся админом.
-5. Register-by-invite создаёт user.
-6. Upload поддерживает mp3/flac/wav/ogg/m4a.
-7. Stream трека с Range возвращает 206.
-8. Share-link открывается публично.
-9. Friend storage check меняет статус online/offline.
-10. Sync catalog заполняет remote cache.
-11. Создание sync-room и обновление state.
-12. Смена темы через settings.
-
-## Чек-лист
-- API отвечает в Swagger.
-- UI работает в desktop/mobile.
-- Docker volumes сохраняют файлы.
+1. `docker compose up --build`.
+2. UI открывается на `http://localhost:5173` без login.
+3. `GET /api/local/status` возвращает `single_owner` и `local_owner`.
+4. Upload/stream/download треков работают.
+5. Cover upload + `GET /api/tracks/{id}/cover` работают.
+6. Share-link открывается через `/share/:token`.
+7. Friend storage check показывает status/ping/speed.
+8. Sync catalog наполняет remote cache.
+9. Remote stream/download работают.
+10. Playlists CRUD и share-link на playlist работают.
+11. `NODE_REQUIRE_TOKEN=true` блокирует node protected routes без токена.

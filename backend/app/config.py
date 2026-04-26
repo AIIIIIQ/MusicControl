@@ -17,6 +17,8 @@ class Settings(BaseSettings):
 
     node_name: str = 'MusicControl Node'
     node_description: str = 'Personal distributed music storage node'
+    node_access_token: str = 'dev_node_token'
+    node_require_token: bool = False
 
 
 settings = Settings()

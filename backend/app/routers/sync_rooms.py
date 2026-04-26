@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, get_db
 from app.models import SyncRoom, User
 from app.schemas.common import SyncRoomCreate, SyncStateUpdate
-from app.utils.deps import get_current_user
+from app.utils.deps import get_local_owner
 
 router = APIRouter(tags=['sync'])
 rooms_connections: dict[int, list[WebSocket]] = {}
@@ -20,7 +20,7 @@ def _room_or_404(room_id: int, db: Session):
 
 
 @router.post('/api/sync-rooms')
-def create_room(payload: SyncRoomCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_room(payload: SyncRoomCreate, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     room = SyncRoom(owner_id=user.id, title=payload.title)
     db.add(room)
     db.commit()
@@ -29,17 +29,17 @@ def create_room(payload: SyncRoomCreate, user: User = Depends(get_current_user),
 
 
 @router.get('/api/sync-rooms')
-def list_rooms(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_rooms(user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     return db.query(SyncRoom).all()
 
 
 @router.get('/api/sync-rooms/{room_id}')
-def get_room(room_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_room(room_id: int, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     return _room_or_404(room_id, db)
 
 
 @router.post('/api/sync-rooms/{room_id}/state')
-async def update_state(room_id: int, payload: SyncStateUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def update_state(room_id: int, payload: SyncStateUpdate, user: User = Depends(get_local_owner), db: Session = Depends(get_db)):
     room = _room_or_404(room_id, db)
     if room.owner_id != user.id:
         raise HTTPException(status_code=403, detail='Only owner can update state')
